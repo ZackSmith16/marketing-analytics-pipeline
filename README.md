@@ -21,11 +21,11 @@ Everything from BigQuery onward mirrors how the original worked. The connectors 
 
 One Looker Studio (Data Studio) report per client, each locked to that client with a report-level filter, built on the marts below and checked number-for-number against the pipeline.
 
-| Client | Type | Pages | PDF |
-|---|---|---|---|
-| Northwind Candle Co. | E-commerce | Overview · Meta Ads · Google Ads · Shopify · Google Analytics | [August 2026](docs/reports/northwind-candle-co.pdf) |
-| Summit Outdoor Supply | E-commerce | Overview · Meta Ads · Google Ads · Shopify · Google Analytics | [August 2026](docs/reports/summit-outdoor-supply.pdf) |
-| Harbor Dental Group | Lead gen | Overview · Meta Ads · Google Ads · Google Analytics | [August 2026](docs/reports/harbor-dental-group.pdf) |
+| Client | Type | Pages | Live report | PDF |
+|---|---|---|---|---|
+| Northwind Candle Co. | E-commerce | Overview · Meta Ads · Google Ads · Shopify · Google Analytics | [Open in Looker Studio](https://datastudio.google.com/reporting/9865b1f6-458b-4273-a118-6fecac89461d) | [August 2026](docs/reports/northwind-candle-co.pdf) |
+| Summit Outdoor Supply | E-commerce | Overview · Meta Ads · Google Ads · Shopify · Google Analytics | [Open in Looker Studio](https://datastudio.google.com/reporting/d95f2ea8-a3c7-4f62-a695-7b6f86922f04) | [August 2026](docs/reports/summit-outdoor-supply.pdf) |
+| Harbor Dental Group | Lead gen | Overview · Meta Ads · Google Ads · Google Analytics | [Open in Looker Studio](https://datastudio.google.com/reporting/8e46cf34-9939-45f9-99e5-4befaa17ac0e) | [August 2026](docs/reports/harbor-dental-group.pdf) |
 
 <p>
   <img src="docs/screenshots/northwind-candle-co-overview.png" width="32%" alt="Northwind overview page">
@@ -109,7 +109,7 @@ Table names become `${ref()}` calls, which is how Dataform builds the dependency
 
 *The compiled graph in BigQuery: 9 raw and reference sources (left) feed 8 staging tables and 7 marts, with the 15 tests as assertions.*
 
-A full Dataform run in BigQuery executes all 30 actions (15 tables, 15 assertions) in about 16 seconds, with every assertion passing. Running it there also caught one thing the plain runner couldn't: Dataform saves each assertion as a view, and a view can't have two columns with the same name, so one test that ended in `SELECT *` over a join had to name its columns explicitly.
+A full Dataform run in BigQuery executes all 30 actions (15 tables, 15 assertions) in about 16 seconds, with every assertion passing.
 
 ## What the data throws at the pipeline
 
