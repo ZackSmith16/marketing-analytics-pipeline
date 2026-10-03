@@ -105,6 +105,10 @@ python pipeline/export_dataform.py   # regenerates dataform/ from sql/ and tests
 
 Table names become `${ref()}` calls, which is how Dataform builds the dependency graph, and each test becomes an assertion that must return zero rows. Raw and reference tables are declared as sources, since loading them stays with `pipeline/run.py`. The compiled Dataform SQL is identical to the files in `sql/` and `tests/`, so both ways of running the pipeline produce the same tables.
 
+![Dataform dependency graph in BigQuery](docs/screenshots/dataform-dependency-graph.png)
+
+*The compiled graph in BigQuery: 9 raw and reference sources (left) feed 8 staging tables and 7 marts, with the 15 tests as assertions.*
+
 ## What the data throws at the pipeline
 
 | Problem in the raw data | How it's handled | Test that catches a regression |
