@@ -109,6 +109,8 @@ Table names become `${ref()}` calls, which is how Dataform builds the dependency
 
 *The compiled graph in BigQuery: 9 raw and reference sources (left) feed 8 staging tables and 7 marts, with the 15 tests as assertions.*
 
+A full Dataform run in BigQuery executes all 30 actions (15 tables, 15 assertions) in about 16 seconds, with every assertion passing. Running it there also caught one thing the plain runner couldn't: Dataform saves each assertion as a view, and a view can't have two columns with the same name, so one test that ended in `SELECT *` over a join had to name its columns explicitly.
+
 ## What the data throws at the pipeline
 
 | Problem in the raw data | How it's handled | Test that catches a regression |
