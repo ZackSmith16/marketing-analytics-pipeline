@@ -1,0 +1,22 @@
+config {
+  type: "assertion",
+  description: "Meta conversions in the mart must equal the primary action counts in staging. If every purchase alias were summed, the mart would show up to 3x the real number of purchases."
+}
+
+-- Meta conversions in the mart must equal the primary action counts in
+-- staging. If every purchase alias were summed, the mart would show up to
+-- 3x the real number of purchases.
+WITH expected AS (
+  SELECT SUM(a.action_count) AS conversions
+  FROM ${ref("stg_meta_ads__actions")} AS a
+  WHERE a.action_type IN ('purchase', 'lead')
+),
+actual AS (
+  SELECT SUM(conversions) AS conversions
+  FROM ${ref("mart_campaign_daily")}
+  WHERE platform = 'meta_ads'
+)
+SELECT e.conversions AS expected, a.conversions AS actual
+FROM expected AS e
+CROSS JOIN actual AS a
+WHERE ABS(e.conversions - a.conversions) > 0.01

@@ -1,0 +1,54 @@
+config {
+  type: "table",
+  schema: "staging",
+  description: "Grain: one row per account, campaign, day, and action type. Meta returns conversions as two nested arrays: `actions` (counts) and `action_values` (revenue). Values arrive as strings, and action types with a value of zero are left out entirely.",
+  tags: ["staging"]
+}
+
+-- Grain: one row per account, campaign, day, and action type.
+--
+-- Meta returns conversions as two nested arrays: `actions` (counts) and
+-- `action_values` (revenue). Values arrive as strings, and action types with
+-- a value of zero are left out entirely.
+WITH latest_sync AS (
+  SELECT *
+  FROM ${ref("meta_ads_campaigns")}
+  WHERE TRUE
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY date, account_id, campaign_id
+    ORDER BY _synced_at DESC
+  ) = 1
+),
+
+action_counts AS (
+  SELECT
+    s.date,
+    s.account_id,
+    s.campaign_id,
+    a.action_type,
+    SAFE_CAST(a.value AS FLOAT64) AS action_count
+  FROM latest_sync AS s
+  CROSS JOIN UNNEST(s.actions) AS a
+),
+
+action_values AS (
+  SELECT
+    s.date,
+    s.account_id,
+    s.campaign_id,
+    v.action_type,
+    SAFE_CAST(v.value AS FLOAT64) AS action_value
+  FROM latest_sync AS s
+  CROSS JOIN UNNEST(s.action_values) AS v
+)
+
+SELECT
+  date,
+  account_id,
+  campaign_id,
+  action_type,
+  COALESCE(c.action_count, 0) AS action_count,
+  COALESCE(v.action_value, 0) AS action_value
+FROM action_counts AS c
+FULL OUTER JOIN action_values AS v
+  USING (date, account_id, campaign_id, action_type)

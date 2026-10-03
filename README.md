@@ -61,7 +61,7 @@ marts        mart_campaign_daily          all ad platforms in one schema
              mart_ga4_channel_daily       traffic by channel, with last year
         │
         ▼
-tests/       15 data quality checks
+tests/       15 data quality checks (Dataform assertions in dataform/)
 dashboard    Looker Studio (Data Studio): one report per client
 ```
 
@@ -83,6 +83,16 @@ python pipeline/run.py --target bigquery --project YOUR_PROJECT_ID
 ```
 
 The runner loads the raw data, builds each model in dependency order, then runs every test. Model files are plain `SELECT` statements in BigQuery SQL. The local target translates them to DuckDB with sqlglot, so the same SQL runs in both places.
+
+### In BigQuery with Dataform
+
+The same models also run in [Dataform](https://cloud.google.com/dataform), BigQuery's built-in tool for managing SQL pipelines. `dataform/` is generated from `sql/` and `tests/`:
+
+```bash
+python pipeline/export_dataform.py   # regenerates dataform/ from sql/ and tests/
+```
+
+Table names become `${ref()}` calls, which is how Dataform builds the dependency graph, and each test becomes an assertion that must return zero rows. Raw and reference tables are declared as sources, since loading them stays with `pipeline/run.py`. The compiled Dataform SQL is identical to the files in `sql/` and `tests/`, so both ways of running the pipeline produce the same tables.
 
 ## What the data throws at the pipeline
 
@@ -125,5 +135,5 @@ These come from maintaining the original system:
 - [x] GA4 sessions and channel grouping via a mapping table
 - [x] Looker Studio reports: one per client, with Overview, Meta, Google, Shopify and Google Analytics pages
 - [ ] Incremental loads: only process new days, with `MERGE` (needs billing enabled; the sandbox doesn't allow DML)
-- [ ] Dataform version of the SQL, with the dependency graph
+- [x] Dataform version of the SQL (`dataform/`), generated from `sql/` and `tests/`
 - [ ] Klaviyo email performance

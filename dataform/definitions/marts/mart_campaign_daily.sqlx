@@ -1,0 +1,153 @@
+config {
+  type: "table",
+  schema: "marts",
+  description: "Cross-channel campaign performance. Grain: one row per platform, campaign, and day. Every platform is mapped into the same set of columns, so adding a new platform means adding one more SELECT to `unioned`, not new columns everywhere else.",
+  tags: ["marts"]
+}
+
+-- Cross-channel campaign performance.
+-- Grain: one row per platform, campaign, and day.
+--
+-- Every platform is mapped into the same set of columns, so adding a new
+-- platform means adding one more SELECT to `unioned`, not new columns
+-- everywhere else.
+WITH meta_conversions AS (
+  -- Collapse actions to the campaign-day grain BEFORE joining to spend.
+  -- Joining at the action grain would repeat each day's spend once per
+  -- action type (fan-out).
+  --
+  -- The same purchase is reported under several action types
+  -- (purchase, omni_purchase, offsite_conversion.fb_pixel_purchase).
+  -- The reference table marks one primary type per conversion so each
+  -- purchase or lead is counted once.
+  SELECT
+    a.date,
+    a.account_id,
+    a.campaign_id,
+    SUM(a.action_count) AS conversions,
+    SUM(a.action_value) AS conversion_value
+  FROM ${ref("stg_meta_ads__actions")} AS a
+  JOIN ${ref("meta_conversion_actions")} AS r
+    USING (action_type)
+  WHERE r.is_primary
+    AND r.conversion_type IN ('purchase', 'lead')
+  GROUP BY 1, 2, 3
+),
+
+meta AS (
+  SELECT
+    c.date,
+    c.platform,
+    c.account_id,
+    c.campaign_id,
+    c.campaign_name,
+    c.impressions,
+    c.clicks,
+    c.cost,
+    COALESCE(m.conversions, 0) AS conversions,
+    COALESCE(m.conversion_value, 0) AS conversion_value
+  FROM ${ref("stg_meta_ads__campaigns")} AS c
+  LEFT JOIN meta_conversions AS m
+    USING (date, account_id, campaign_id)
+),
+
+google AS (
+  SELECT
+    date,
+    platform,
+    account_id,
+    campaign_id,
+    campaign_name,
+    impressions,
+    clicks,
+    cost,
+    conversions,
+    conversion_value
+  FROM ${ref("stg_google_ads__campaigns")}
+),
+
+-- UNION ALL matches columns by position, not name, so both sides list the
+-- same columns in the same order.
+unioned AS (
+  SELECT date, platform, account_id, campaign_id, campaign_name,
+         impressions, clicks, cost, conversions, conversion_value
+  FROM google
+  UNION ALL
+  SELECT date, platform, account_id, campaign_id, campaign_name,
+         impressions, clicks, cost, conversions, conversion_value
+  FROM meta
+),
+
+-- Last year's numbers for the same campaign, shifted forward one year so they
+-- line up with this year's dates. Grouped after shifting because Feb 29 and
+-- Feb 28 both land on Feb 28 in a non-leap year.
+prior_year AS (
+  SELECT
+    DATE_ADD(date, INTERVAL 1 YEAR) AS date,
+    platform,
+    account_id,
+    campaign_id,
+    SUM(cost) AS cost_prev_year,
+    SUM(conversions) AS conversions_prev_year,
+    SUM(conversion_value) AS conversion_value_prev_year
+  FROM unioned
+  GROUP BY 1, 2, 3, 4
+),
+
+-- Full outer join so a campaign that ran last year but not this year still
+-- contributes its prior-year numbers (with zeros for this year).
+-- Prior-year rows are capped at the newest loaded date so the table never
+-- extends into the future.
+with_prior_year AS (
+  SELECT
+    COALESCE(u.date, py.date) AS date,
+    COALESCE(u.platform, py.platform) AS platform,
+    COALESCE(u.account_id, py.account_id) AS account_id,
+    COALESCE(u.campaign_id, py.campaign_id) AS campaign_id,
+    u.campaign_name,
+    COALESCE(u.impressions, 0) AS impressions,
+    COALESCE(u.clicks, 0) AS clicks,
+    COALESCE(u.cost, 0) AS cost,
+    COALESCE(u.conversions, 0) AS conversions,
+    COALESCE(u.conversion_value, 0) AS conversion_value,
+    COALESCE(py.cost_prev_year, 0) AS cost_prev_year,
+    COALESCE(py.conversions_prev_year, 0) AS conversions_prev_year,
+    COALESCE(py.conversion_value_prev_year, 0) AS conversion_value_prev_year
+  FROM unioned AS u
+  FULL OUTER JOIN prior_year AS py
+    ON py.date = u.date
+    AND py.platform = u.platform
+    AND py.account_id = u.account_id
+    AND py.campaign_id = u.campaign_id
+  WHERE COALESCE(u.date, py.date) <= (SELECT MAX(date) FROM unioned)
+)
+
+SELECT
+  w.date,
+  cl.client_id,
+  cl.client_name,
+  cl.client_type,
+  w.platform,
+  w.account_id,
+  w.campaign_id,
+  -- Campaigns get renamed. Report every day under the current name so the
+  -- history of one campaign doesn't split into two rows on the dashboard.
+  -- The ID stays the real identity. IGNORE NULLS skips prior-year-only rows.
+  FIRST_VALUE(w.campaign_name IGNORE NULLS) OVER (
+    PARTITION BY w.platform, w.campaign_id
+    ORDER BY w.date DESC
+    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+  ) AS campaign_name,
+  w.campaign_name AS campaign_name_on_date,
+  w.impressions,
+  w.clicks,
+  w.cost,
+  w.conversions,
+  w.conversion_value,
+  w.cost_prev_year,
+  w.conversions_prev_year,
+  w.conversion_value_prev_year
+FROM with_prior_year AS w
+LEFT JOIN ${ref("stg_clients")} AS cl
+  ON cl.account_id = w.account_id
+  AND cl.platform = w.platform

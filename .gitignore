@@ -4,3 +4,5 @@ local.duckdb.wal
 __pycache__/
 .venv/
 .DS_Store
+dataform/node_modules/
+dataform/.df-credentials.json
