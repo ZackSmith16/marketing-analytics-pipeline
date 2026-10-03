@@ -11,7 +11,15 @@ client_totals AS (
   FROM marts.mart_client_daily
   GROUP BY 1, 2
 )
-SELECT *
+-- Columns are named explicitly: Dataform saves each assertion as a view,
+-- and a view can't have two columns called `cost`.
+SELECT
+  client_id,
+  platform,
+  c.cost AS campaign_cost,
+  o.cost AS client_cost,
+  c.conversions AS campaign_conversions,
+  o.conversions AS client_conversions
 FROM campaign_totals AS c
 FULL OUTER JOIN client_totals AS o USING (client_id, platform)
 WHERE ABS(COALESCE(c.cost, 0) - COALESCE(o.cost, 0)) > 0.01
