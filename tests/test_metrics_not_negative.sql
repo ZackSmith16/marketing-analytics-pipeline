@@ -1,0 +1,8 @@
+-- Delivery and conversion metrics can't be negative.
+SELECT *
+FROM marts.mart_campaign_daily
+WHERE impressions < 0
+   OR clicks < 0
+   OR cost < 0
+   OR conversions < 0
+   OR conversion_value < 0

@@ -1,0 +1,6 @@
+data/
+local.duckdb
+local.duckdb.wal
+__pycache__/
+.venv/
+.DS_Store

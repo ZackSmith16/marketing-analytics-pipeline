@@ -1,0 +1,11 @@
+action_type,conversion_type,is_primary
+purchase,purchase,true
+offsite_conversion.fb_pixel_purchase,purchase,false
+omni_purchase,purchase,false
+lead,lead,true
+onsite_conversion.lead_grouped,lead,false
+offsite_conversion.fb_pixel_lead,lead,false
+add_to_cart,add_to_cart,true
+initiate_checkout,initiate_checkout,true
+landing_page_view,landing_page_view,true
+link_click,link_click,true

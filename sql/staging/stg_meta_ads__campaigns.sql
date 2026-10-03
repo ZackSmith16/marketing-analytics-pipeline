@@ -1,0 +1,20 @@
+-- Grain: one row per account, campaign, and day.
+-- Delivery metrics only. Conversions live in stg_meta_ads__actions, because
+-- Meta nests them in arrays at a finer grain (one entry per action type).
+SELECT
+  date,
+  'meta_ads' AS platform,
+  account_id,
+  campaign_id,
+  TRIM(campaign_name) AS campaign_name,  -- source has stray trailing spaces
+  objective,
+  impressions,
+  clicks,
+  spend AS cost,
+  _synced_at
+FROM raw.meta_ads_campaigns
+WHERE TRUE
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY date, account_id, campaign_id
+  ORDER BY _synced_at DESC
+) = 1

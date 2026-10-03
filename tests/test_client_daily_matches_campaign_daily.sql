@@ -1,0 +1,18 @@
+-- The overview must add up to exactly the campaign-level table.
+-- This is the guarantee the old setup lacked when the two dashboards were
+-- built from two separate 350-line queries.
+WITH campaign_totals AS (
+  SELECT client_id, platform, SUM(cost) AS cost, SUM(conversions) AS conversions
+  FROM marts.mart_campaign_daily
+  GROUP BY 1, 2
+),
+client_totals AS (
+  SELECT client_id, platform, SUM(cost) AS cost, SUM(conversions) AS conversions
+  FROM marts.mart_client_daily
+  GROUP BY 1, 2
+)
+SELECT *
+FROM campaign_totals AS c
+FULL OUTER JOIN client_totals AS o USING (client_id, platform)
+WHERE ABS(COALESCE(c.cost, 0) - COALESCE(o.cost, 0)) > 0.01
+   OR ABS(COALESCE(c.conversions, 0) - COALESCE(o.conversions, 0)) > 0.01

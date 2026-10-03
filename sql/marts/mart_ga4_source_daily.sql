@@ -1,0 +1,24 @@
+-- Website traffic by source, medium and campaign.
+-- Grain: one row per client, channel, source, medium, campaign, and day.
+-- Several raw spellings (e.g. "Klaviyo / Email" and "klaviyo / email")
+-- collapse into one row here after cleaning.
+SELECT
+  s.date,
+  cl.client_id,
+  cl.client_name,
+  cl.client_type,
+  s.channel,
+  s.source,
+  s.medium,
+  s.campaign,
+  SUM(s.sessions) AS sessions,
+  SUM(s.engaged_sessions) AS engaged_sessions,
+  SUM(s.new_users) AS new_users,
+  SUM(s.total_users) AS total_users,
+  SUM(s.key_events) AS key_events,
+  SUM(s.purchase_revenue) AS revenue
+FROM staging.stg_ga4__sessions AS s
+LEFT JOIN staging.stg_clients AS cl
+  ON cl.account_id = s.property_id
+  AND cl.platform = 'ga4'
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8

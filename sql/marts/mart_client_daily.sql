@@ -1,0 +1,17 @@
+-- Client overview, one row per client, platform, and day.
+--
+-- Built on top of mart_campaign_daily rather than re-querying the raw
+-- tables, so the overview and campaign dashboards can never disagree.
+SELECT
+  date,
+  client_id,
+  client_name,
+  client_type,
+  platform,
+  SUM(impressions) AS impressions,
+  SUM(clicks) AS clicks,
+  SUM(cost) AS cost,
+  SUM(conversions) AS conversions,
+  SUM(conversion_value) AS conversion_value
+FROM marts.mart_campaign_daily
+GROUP BY 1, 2, 3, 4, 5

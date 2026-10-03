@@ -1,0 +1,5 @@
+-- Every ad account must map to a client. An unmapped account means spend
+-- silently falls out of every client's dashboard.
+SELECT DISTINCT platform, account_id
+FROM marts.mart_campaign_daily
+WHERE client_id IS NULL

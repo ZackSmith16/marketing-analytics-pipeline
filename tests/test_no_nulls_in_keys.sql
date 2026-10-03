@@ -1,0 +1,8 @@
+-- Keys must never be NULL. In SQL, NULL = NULL is not true, so NULL keys
+-- break joins and split rows.
+SELECT *
+FROM marts.mart_campaign_daily
+WHERE date IS NULL
+   OR platform IS NULL
+   OR account_id IS NULL
+   OR campaign_id IS NULL

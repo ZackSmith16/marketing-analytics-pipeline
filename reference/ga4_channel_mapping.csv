@@ -1,0 +1,10 @@
+priority,channel,source_regex,medium_regex
+10,Google Ads,^(google|adwords)$,^(cpc|ppc|paid)$
+20,Meta Ads,^(facebook|fb|ig|instagram|meta|m\.facebook\.com)$,^(paid_social|paid|cpc|ppc)$
+30,Email,^(klaviyo|mailchimp|newsletter)$,.*
+31,Email,.*,^e-?mail$
+40,Organic Search,.*,^organic$
+50,Organic Social,^(facebook|fb|ig|instagram|pinterest|pinterest\.com|tiktok|linkedin)$,^(referral|social)$
+60,Referral,.*,^referral$
+70,Direct,^\(direct\)$,^\((none|not set)\)$
+999,Other,.*,.*

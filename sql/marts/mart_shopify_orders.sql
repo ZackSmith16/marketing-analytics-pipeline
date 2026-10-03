@@ -1,0 +1,53 @@
+-- Grain: one row per real order (test and excluded orders removed).
+--
+-- New vs. returning: a customer's first order is found across their FULL
+-- history before any date filtering. Ranking only within a reporting window
+-- would label a long-time customer "new" the first time they appear in the
+-- window. Spam and test orders are removed first so they never count as a
+-- customer's first purchase.
+WITH valid AS (
+  SELECT *
+  FROM staging.stg_shopify__orders
+  WHERE NOT is_test
+    AND NOT is_excluded
+),
+
+ranked AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY store_id, customer_id
+      ORDER BY created_at, order_id
+    ) AS customer_order_number
+  FROM valid
+),
+
+lines AS (
+  SELECT
+    order_id,
+    SUM(quantity) AS units,
+    SUM(gross_sales) AS gross_sales
+  FROM staging.stg_shopify__line_items
+  GROUP BY 1
+)
+
+SELECT
+  r.order_date AS date,
+  cl.client_id,
+  cl.client_name,
+  cl.client_type,
+  r.store_id,
+  r.order_id,
+  r.customer_id,
+  r.sales_channel,
+  r.customer_order_number = 1 AS is_new_customer,
+  l.units,
+  l.gross_sales,
+  r.discounts,
+  l.gross_sales - r.discounts AS net_sales_before_returns
+FROM ranked AS r
+JOIN lines AS l
+  USING (order_id)
+LEFT JOIN staging.stg_clients AS cl
+  ON cl.account_id = r.store_id
+  AND cl.platform = 'shopify'
